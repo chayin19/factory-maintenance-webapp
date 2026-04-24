@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --app-bg: #f6f7f9;
+      --app-ink: #1f2937;
+      --app-muted: #6b7280;
+      --app-line: #d7dde5;
+    }
+
+    body {
+      background: var(--app-bg);
+      color: var(--app-ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .app-shell {
+      max-width: 720px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: #fff;
+    }
+
+    .top-bar {
+      background: #17324d;
+      color: #fff;
+    }
+
+    .machine-panel {
+      background: #eef5f1;
+      border: 1px solid #cfe3d6;
+      border-radius: 8px;
+    }
+
+    .meta-label {
+      color: var(--app-muted);
+      font-size: .82rem;
+    }
+
+    .touch-btn {
+      min-height: 64px;
+      border-radius: 8px;
+      text-align: left;
+      white-space: normal;
+      line-height: 1.3;
+    }
+
+    .touch-btn.active {
+      border-color: #17324d;
+      background: #17324d;
+      color: #fff;
+    }
+
+    .severity-btn {
+      min-height: 58px;
+      border-radius: 8px;
+      white-space: normal;
+    }
+
+    .severity-btn.active {
+      border-color: #b45309;
+      background: #f59e0b;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .form-control,
+    .btn {
+      font-size: 1rem;
+    }
+
+    .submit-btn {
+      min-height: 56px;
+      font-size: 1.08rem;
+      font-weight: 700;
+      border-radius: 8px;
+    }
+
+    .loading-state,
+    .success-state {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell shadow-sm">
+    <div id="loadingState" class="loading-state text-center">
+      <div>
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <div class="fw-semibold">กำลังโหลดข้อมูลเครื่องจักร</div>
+      </div>
+    </div>
+
+    <div id="errorState" class="d-none p-3">
+      <div class="alert alert-danger mb-0" id="errorText"></div>
+    </div>
+
+    <div id="successState" class="success-state d-none text-center">
+      <div class="w-100">
+        <div class="display-6 fw-bold text-success mb-2">แจ้งซ่อมสำเร็จ</div>
+        <div class="text-secondary mb-3">เลขที่ใบแจ้งซ่อม</div>
+        <div class="border rounded-3 p-3 bg-light fs-3 fw-bold" id="successRequestId"></div>
+        <div class="mt-3 text-secondary" id="successMachine"></div>
+      </div>
+    </div>
+
+    <form id="reportForm" class="d-none">
+      <header class="top-bar p-3">
+        <div class="small opacity-75">แจ้งซ่อมเครื่องจักร</div>
+        <h1 class="h4 mb-0" id="machineTitle">-</h1>
+      </header>
+
+      <div class="p-3">
+        <section class="machine-panel p-3 mb-3">
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="meta-label">โรงงาน</div>
+              <div class="fw-semibold" id="plantName">-</div>
+            </div>
+            <div class="col-6">
+              <div class="meta-label">กระบวนการ</div>
+              <div class="fw-semibold" id="machineGroup">-</div>
+            </div>
+            <div class="col-12">
+              <div class="meta-label">ตำแหน่ง</div>
+              <div class="fw-semibold" id="location">-</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mb-4">
+          <div class="section-title mb-2">เลือกอาการเสีย</div>
+          <div id="problemGroups"></div>
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <button type="button" class="btn btn-outline-secondary w-100 touch-btn special-problem"
+                data-code="GEN_OTHER_REVIEW"
+                data-name="อื่น ๆ / ไม่อยู่ในรายการ"
+                data-source="other">
+                อื่น ๆ / ไม่อยู่ในรายการ
+              </button>
+            </div>
+            <div class="col-12">
+              <button type="button" class="btn btn-outline-secondary w-100 touch-btn special-problem"
+                data-code="GEN_OTHER_REVIEW"
+                data-name="ไม่แน่ใจ ให้ช่างประเมิน"
+                data-source="technician_assess">
+                ไม่แน่ใจ ให้ช่างประเมิน
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="otherProblemWrap" class="mb-4 d-none">
+          <label for="otherProblemText" class="form-label fw-semibold">ระบุอาการเสียอื่น ๆ</label>
+          <textarea id="otherProblemText" class="form-control" rows="3" maxlength="500"></textarea>
+        </section>
+
+        <section class="mb-4">
+          <div class="section-title mb-2">ระดับความเร่งด่วน</div>
+          <div class="row g-2">
+            <div class="col-12">
+              <button type="button" class="btn btn-outline-warning w-100 severity-btn" data-priority="หยุดเครื่อง">หยุดเครื่อง</button>
+            </div>
+            <div class="col-12">
+              <button type="button" class="btn btn-outline-warning w-100 severity-btn" data-priority="ผลิตได้แต่เสี่ยงเสีย">ผลิตได้แต่เสี่ยงเสีย</button>
+            </div>
+            <div class="col-12">
+              <button type="button" class="btn btn-outline-warning w-100 severity-btn" data-priority="แจ้งตรวจสอบ">แจ้งตรวจสอบ</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="mb-4">
+          <label for="symptomNote" class="form-label fw-semibold">หมายเหตุ</label>
+          <textarea id="symptomNote" class="form-control" rows="3" maxlength="1000" placeholder="ไม่บังคับ"></textarea>
+        </section>
+
+        <section class="mb-4">
+          <label for="imageUrl" class="form-label fw-semibold">ลิงก์รูปภาพ</label>
+          <input id="imageUrl" type="url" class="form-control" placeholder="ไม่บังคับ">
+        </section>
+
+        <section class="mb-4">
+          <label for="reportedBy" class="form-label fw-semibold">ชื่อผู้แจ้ง</label>
+          <input id="reportedBy" type="text" class="form-control" maxlength="120" placeholder="ไม่บังคับ">
+        </section>
+
+        <div id="formAlert" class="alert alert-danger d-none"></div>
+
+        <button type="submit" id="submitButton" class="btn btn-success w-100 submit-btn mb-3">
+          ส่งใบแจ้งซ่อม
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const initialMachineId = '<?= machineId ?>';
+    const state = {
+      machine: null,
+      selectedProblem: null,
+      selectedPriority: '',
+    };
+
+    const els = {
+      loadingState: document.getElementById('loadingState'),
+      errorState: document.getElementById('errorState'),
+      errorText: document.getElementById('errorText'),
+      successState: document.getElementById('successState'),
+      successRequestId: document.getElementById('successRequestId'),
+      successMachine: document.getElementById('successMachine'),
+      reportForm: document.getElementById('reportForm'),
+      machineTitle: document.getElementById('machineTitle'),
+      plantName: document.getElementById('plantName'),
+      machineGroup: document.getElementById('machineGroup'),
+      location: document.getElementById('location'),
+      problemGroups: document.getElementById('problemGroups'),
+      otherProblemWrap: document.getElementById('otherProblemWrap'),
+      otherProblemText: document.getElementById('otherProblemText'),
+      symptomNote: document.getElementById('symptomNote'),
+      imageUrl: document.getElementById('imageUrl'),
+      reportedBy: document.getElementById('reportedBy'),
+      formAlert: document.getElementById('formAlert'),
+      submitButton: document.getElementById('submitButton'),
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      bindStaticButtons();
+      loadPage();
+    });
+
+    function loadPage() {
+      google.script.run
+        .withSuccessHandler(renderPage)
+        .withFailureHandler(showLoadError)
+        .getReportPageData(initialMachineId);
+    }
+
+    function renderPage(data) {
+      state.machine = data.machine;
+      els.machineTitle.textContent = `${data.machine.machine_name} (${data.machine.machine_id})`;
+      els.plantName.textContent = data.machine.plant_name;
+      els.machineGroup.textContent = data.machine.machine_group;
+      els.location.textContent = data.machine.location || '-';
+      renderProblemGroups(data.problemGroups || []);
+      els.loadingState.classList.add('d-none');
+      els.reportForm.classList.remove('d-none');
+    }
+
+    function renderProblemGroups(groups) {
+      els.problemGroups.innerHTML = '';
+
+      groups.forEach((group) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-3';
+
+        const title = document.createElement('div');
+        title.className = 'small text-secondary mb-2';
+        title.textContent = group.group_label;
+        wrap.appendChild(title);
+
+        const row = document.createElement('div');
+        row.className = 'row g-2';
+
+        group.problems.forEach((problem) => {
+          const col = document.createElement('div');
+          col.className = 'col-12';
+
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-outline-primary w-100 touch-btn problem-btn';
+          button.dataset.code = problem.problem_code;
+          button.dataset.name = problem.problem_name_th;
+          button.dataset.source = 'codebook';
+          button.textContent = problem.problem_name_th;
+          button.addEventListener('click', () => selectProblem(button));
+
+          col.appendChild(button);
+          row.appendChild(col);
+        });
+
+        wrap.appendChild(row);
+        els.problemGroups.appendChild(wrap);
+      });
+    }
+
+    function bindStaticButtons() {
+      document.querySelectorAll('.special-problem').forEach((button) => {
+        button.addEventListener('click', () => selectProblem(button));
+      });
+
+      document.querySelectorAll('.severity-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.severity-btn').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          state.selectedPriority = button.dataset.priority;
+          hideFormAlert();
+        });
+      });
+
+      els.reportForm.addEventListener('submit', submitForm);
+    }
+
+    function selectProblem(button) {
+      document.querySelectorAll('.problem-btn, .special-problem').forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      state.selectedProblem = {
+        problem_code: button.dataset.code,
+        problem_name_th: button.dataset.name,
+        problem_source: button.dataset.source,
+      };
+      els.otherProblemWrap.classList.toggle('d-none', button.dataset.source !== 'other');
+      hideFormAlert();
+    }
+
+    function submitForm(event) {
+      event.preventDefault();
+
+      if (!state.selectedProblem) {
+        showFormAlert('กรุณาเลือกอาการเสีย');
+        return;
+      }
+
+      if (!state.selectedPriority) {
+        showFormAlert('กรุณาเลือกระดับความเร่งด่วน');
+        return;
+      }
+
+      if (state.selectedProblem.problem_source === 'other' && !els.otherProblemText.value.trim()) {
+        showFormAlert('กรุณาระบุอาการเสียอื่น ๆ');
+        els.otherProblemText.focus();
+        return;
+      }
+
+      const payload = {
+        machine_id: state.machine.machine_id,
+        problem_code: state.selectedProblem.problem_code,
+        problem_name_th: state.selectedProblem.problem_name_th,
+        problem_source: state.selectedProblem.problem_source,
+        other_problem_text: els.otherProblemText.value.trim(),
+        symptom_note: els.symptomNote.value.trim(),
+        image_url: els.imageUrl.value.trim(),
+        reported_by: els.reportedBy.value.trim(),
+        priority: state.selectedPriority,
+      };
+
+      setSubmitting(true);
+      google.script.run
+        .withSuccessHandler(showSuccess)
+        .withFailureHandler((error) => {
+          setSubmitting(false);
+          showFormAlert(error.message || 'ส่งข้อมูลไม่สำเร็จ');
+        })
+        .submitRepairRequest(payload);
+    }
+
+    function showSuccess(result) {
+      els.reportForm.classList.add('d-none');
+      els.successRequestId.textContent = result.request_id;
+      els.successMachine.textContent = `${result.machine_name} สถานะ ${result.request_status}`;
+      els.successState.classList.remove('d-none');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setSubmitting(isSubmitting) {
+      els.submitButton.disabled = isSubmitting;
+      els.submitButton.textContent = isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งใบแจ้งซ่อม';
+    }
+
+    function showLoadError(error) {
+      els.loadingState.classList.add('d-none');
+      els.errorText.textContent = error.message || 'โหลดข้อมูลไม่สำเร็จ';
+      els.errorState.classList.remove('d-none');
+    }
+
+    function showFormAlert(message) {
+      els.formAlert.textContent = message;
+      els.formAlert.classList.remove('d-none');
+    }
+
+    function hideFormAlert() {
+      els.formAlert.classList.add('d-none');
+      els.formAlert.textContent = '';
+    }
+  </script>
+</body>
+</html>
