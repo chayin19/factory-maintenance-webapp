@@ -1,0 +1,37 @@
+<script>
+  function goHome() {
+    window.top.location.href = baseUrl();
+  }
+
+  function goTechnician() {
+    window.top.location.href = baseUrl() + '?page=technician';
+  }
+
+  function goSupervisor() {
+    window.top.location.href = baseUrl() + '?page=supervisor';
+  }
+
+  function baseUrl() {
+    return window.location.href.split('?')[0];
+  }
+
+  function showError(message) {
+    const target = document.getElementById('alertArea');
+    if (target) {
+      target.innerHTML = '<div class="alert alert-danger" role="alert">' + escapeHtml(message) + '</div>';
+    } else {
+      alert(message);
+    }
+  }
+
+  function clearError() {
+    const target = document.getElementById('alertArea');
+    if (target) target.innerHTML = '';
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(char) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+    });
+  }
+</script>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="topbar">
+        <h1 class="h4 fw-bold mb-2">ระบบแจ้งซ่อมโรงงาน</h1>
+        <div class="nav-grid">
+          <button class="btn btn-primary" onclick="goHome()">หน้าแรก</button>
+          <button class="btn btn-outline-primary" onclick="goTechnician()">หน้าช่าง</button>
+          <button class="btn btn-outline-primary" onclick="goSupervisor()">Dashboard</button>
+        </div>
+      </div>
+
+      <div id="alertArea"></div>
+      <section class="compact-card">
+        <div class="d-grid gap-2">
+          <button class="btn btn-success btn-lg" onclick="goHome()">แจ้งซ่อม</button>
+          <button class="btn btn-outline-dark btn-lg" onclick="goTechnician()">งานซ่อมสำหรับช่าง</button>
+          <button class="btn btn-outline-dark btn-lg" onclick="goSupervisor()">แดชบอร์ดหัวหน้างาน</button>
+        </div>
+      </section>
+
+      <section id="machineArea" class="pb-4">
+        <div class="loading">กำลังโหลดรายชื่อเครื่องจักร...</div>
+      </section>
+    </main>
+
+    <?!= include('Shared'); ?>
+    <script>
+      google.script.run
+        .withSuccessHandler(renderMachines)
+        .withFailureHandler(function(error) { showError(error.message); })
+        .getHomeData();
+
+      function renderMachines(data) {
+        const area = document.getElementById('machineArea');
+        const groups = data.groups || {};
+        const plants = Object.keys(groups);
+        if (!plants.length) {
+          area.innerHTML = '<div class="compact-card text-center">ยังไม่มีเครื่องจักรที่เปิดใช้งาน</div>';
+          return;
+        }
+
+        area.innerHTML = plants.map(function(plant) {
+          const types = Object.keys(groups[plant]);
+          return '<h2 class="section-title">' + escapeHtml(plant) + '</h2>' + types.map(function(type) {
+            const buttons = groups[plant][type].map(function(machine) {
+              return '<button class="btn machine-btn btn-xl w-100 mb-2" onclick="openReport(\'' + escapeHtml(machine.machine_id) + '\')">'
+                + '<div>' + escapeHtml(machine.machine_id) + ' - ' + escapeHtml(machine.machine_name) + '</div>'
+                + '<div class="small-muted">' + escapeHtml(machine.location || '') + '</div>'
+                + '</button>';
+            }).join('');
+            return '<div class="compact-card"><h3 class="h6 fw-bold">' + escapeHtml(type) + '</h3>' + buttons + '</div>';
+          }).join('');
+        }).join('');
+      }
+
+      function openReport(machineId) {
+        window.top.location.href = baseUrl() + '?page=report&machine_id=' + encodeURIComponent(machineId);
+      }
+    </script>
+  </body>
+</html>

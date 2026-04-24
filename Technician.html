@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="topbar">
+        <h1 class="h4 fw-bold mb-2">งานซ่อมสำหรับช่าง</h1>
+        <div class="nav-grid">
+          <button class="btn btn-outline-primary" onclick="goHome()">หน้าแรก</button>
+          <button class="btn btn-primary" onclick="goTechnician()">หน้าช่าง</button>
+          <button class="btn btn-outline-primary" onclick="goSupervisor()">Dashboard</button>
+        </div>
+      </div>
+
+      <div id="alertArea"></div>
+      <section class="compact-card">
+        <label class="form-label fw-bold" for="technicianName">ชื่อช่าง</label>
+        <input id="technicianName" class="form-control" placeholder="ระบุชื่อช่าง">
+      </section>
+      <section id="jobArea"><div class="loading">กำลังโหลดงานซ่อม...</div></section>
+    </main>
+
+    <div class="modal fade" id="closeModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <form class="modal-content" onsubmit="submitClose(event)">
+          <div class="modal-header">
+            <h2 class="modal-title h5">ปิดงานซ่อม</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="closeRequestId">
+            <label class="form-label fw-bold">ประเภทงาน</label>
+            <select id="workType" class="form-select mb-3" required>
+              <option value="">เลือกประเภทงาน</option>
+              <option value="ซ่อมแก้ไข">ซ่อมแก้ไข</option>
+              <option value="ปรับตั้ง">ปรับตั้ง</option>
+              <option value="ตรวจสอบ">ตรวจสอบ</option>
+            </select>
+            <label class="form-label fw-bold">สาเหตุหลัก</label>
+            <select id="rootCause" class="form-select mb-3" required></select>
+            <label class="form-label fw-bold">การแก้ไข</label>
+            <select id="actionCode" class="form-select mb-3" required></select>
+            <label class="form-label fw-bold">เครื่องหยุดหรือไม่</label>
+            <select id="machineStopped" class="form-select mb-3" required>
+              <option value="">เลือกคำตอบ</option>
+              <option value="Yes">หยุดเครื่อง</option>
+              <option value="No">ไม่หยุดเครื่อง</option>
+            </select>
+            <label class="form-label fw-bold">บันทึกการซ่อม</label>
+            <textarea id="repairNote" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            <button id="closeSubmitBtn" type="submit" class="btn btn-success">ปิดงาน</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <?!= include('Shared'); ?>
+    <script>
+      let closeData = { rootCauses: [], actions: [] };
+      let closeModal;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        closeModal = new bootstrap.Modal(document.getElementById('closeModal'));
+        loadJobs();
+        google.script.run.withSuccessHandler(function(data) {
+          closeData = data;
+          fillSelect('rootCause', data.rootCauses);
+          fillSelect('actionCode', data.actions);
+        }).getCloseJobData();
+      });
+
+      function loadJobs() {
+        google.script.run
+          .withSuccessHandler(renderJobs)
+          .withFailureHandler(function(error) { showError(error.message); })
+          .getTechnicianJobs();
+      }
+
+      function renderJobs(jobs) {
+        const area = document.getElementById('jobArea');
+        if (!jobs.length) {
+          area.innerHTML = '<div class="compact-card text-center">ไม่มีงานเปิดอยู่ตอนนี้</div>';
+          return;
+        }
+        area.innerHTML = jobs.map(function(job) {
+          const canStart = Boolean(job.accepted_at);
+          const canClose = Boolean(job.accepted_at && job.started_at);
+          const statusLabel = job.request_status === 'Open' ? 'งานใหม่' : 'กำลังซ่อม';
+          return '<article class="compact-card">'
+            + '<div class="d-flex justify-content-between gap-2"><div><div class="fw-bold">' + escapeHtml(job.request_id) + '</div><div>' + escapeHtml(job.machine_id) + ' - ' + escapeHtml(job.machine_name) + '</div></div><span class="badge text-bg-' + (job.request_status === 'Open' ? 'warning' : 'primary') + ' align-self-start">' + escapeHtml(statusLabel) + '</span></div>'
+            + '<div class="small-muted mt-2">' + escapeHtml(job.problem_name) + ' / ' + escapeHtml(job.severity) + '</div>'
+            + '<div class="small-muted">' + escapeHtml(job.created_at) + '</div>'
+            + '<div class="d-grid gap-2 mt-3">'
+            + '<button class="btn btn-outline-primary" onclick="acceptJob(\'' + escapeHtml(job.request_id) + '\')">รับงาน</button>'
+            + '<button class="btn btn-outline-dark" ' + (canStart ? '' : 'disabled') + ' onclick="startRepair(\'' + escapeHtml(job.request_id) + '\')">เริ่มซ่อม</button>'
+            + '<button class="btn btn-success" ' + (canClose ? '' : 'disabled') + ' onclick="openCloseModal(\'' + escapeHtml(job.request_id) + '\')">ปิดงาน</button>'
+            + '</div></article>';
+        }).join('');
+      }
+
+      function technicianName() {
+        return document.getElementById('technicianName').value || 'ช่าง';
+      }
+
+      function acceptJob(requestId) {
+        clearError();
+        google.script.run.withSuccessHandler(loadJobs).withFailureHandler(function(error) { showError(error.message); }).acceptJob(requestId, technicianName());
+      }
+
+      function startRepair(requestId) {
+        clearError();
+        google.script.run.withSuccessHandler(loadJobs).withFailureHandler(function(error) { showError(error.message); }).startRepair(requestId, technicianName());
+      }
+
+      function openCloseModal(requestId) {
+        document.getElementById('closeRequestId').value = requestId;
+        document.getElementById('repairNote').value = '';
+        document.getElementById('closeSubmitBtn').disabled = false;
+        closeModal.show();
+      }
+
+      function submitClose(event) {
+        event.preventDefault();
+        document.getElementById('closeSubmitBtn').disabled = true;
+        google.script.run
+          .withSuccessHandler(function() {
+            closeModal.hide();
+            loadJobs();
+          })
+          .withFailureHandler(function(error) {
+            document.getElementById('closeSubmitBtn').disabled = false;
+            showError(error.message);
+          })
+          .closeJob({
+            request_id: document.getElementById('closeRequestId').value,
+            technician_name: technicianName(),
+            work_type: document.getElementById('workType').value,
+            root_cause_code: document.getElementById('rootCause').value,
+            action_code: document.getElementById('actionCode').value,
+            machine_stopped: document.getElementById('machineStopped').value,
+            repair_note: document.getElementById('repairNote').value
+          });
+      }
+
+      function fillSelect(id, rows) {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">เลือกข้อมูล</option>' + rows.map(function(row) {
+          return '<option value="' + escapeHtml(row.code) + '">' + escapeHtml(row.name) + '</option>';
+        }).join('');
+      }
+    </script>
+  </body>
+</html>

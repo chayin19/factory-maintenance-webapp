@@ -1,0 +1,92 @@
+<style>
+  body {
+    background: #f6f7f9;
+    color: #1f2933;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .app-shell {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 14px;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(246, 247, 249, 0.96);
+    padding: 10px 0;
+  }
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .btn-xl {
+    min-height: 72px;
+    font-size: 1.12rem;
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .machine-btn {
+    text-align: left;
+    background: #ffffff;
+    border: 1px solid #d5dbe3;
+    color: #17202a;
+  }
+  .machine-btn:active, .machine-btn:hover {
+    border-color: #0d6efd;
+    background: #eef5ff;
+  }
+  .section-title {
+    font-weight: 800;
+    margin: 18px 0 10px;
+  }
+  .compact-card {
+    background: #ffffff;
+    border: 1px solid #dfe4ea;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .choice-grid {
+    display: grid;
+    gap: 10px;
+  }
+  .choice-btn {
+    min-height: 58px;
+    border-radius: 8px;
+    font-weight: 700;
+  }
+  .choice-btn.active {
+    border-color: #0d6efd;
+    background: #0d6efd;
+    color: #ffffff;
+  }
+  .metric {
+    min-height: 92px;
+  }
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+  }
+  .small-muted {
+    color: #657080;
+    font-size: 0.92rem;
+  }
+  .table {
+    font-size: 0.95rem;
+  }
+  .loading {
+    padding: 24px;
+    text-align: center;
+    color: #657080;
+  }
+  @media (min-width: 576px) {
+    .choice-grid.two {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .choice-grid.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
